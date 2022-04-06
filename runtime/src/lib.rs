@@ -43,6 +43,8 @@ pub use sp_runtime::{Perbill, Permill};
 /// Import the template pallet.
 pub use pallet_template;
 
+pub use pallet_kitties;
+
 pub use pallet_nft;
 
 /// An index to a block.
@@ -274,6 +276,19 @@ impl pallet_template::Config for Runtime {
 }
 
 parameter_types! {
+    // One can own at most 9,999 kitties
+    pub const MaxKittiesOwned: u32 = 9999;
+}
+
+/// Configure the pallet-kitties in pallets/kitties.
+impl pallet_kitties::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type KittyRandomness = RandomnessCollectiveFlip;
+	type MaxKittiesOwned = MaxKittiesOwned;
+}
+
+parameter_types! {
     // One can own at most 9,999 nfts
     pub const MaxNFTsOwned: u32 = 9999;
 }
@@ -303,6 +318,7 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template,
+		SubstrateKitties: pallet_kitties,
 		SubstrateNFT: pallet_nft,
 	}
 );

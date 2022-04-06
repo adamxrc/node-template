@@ -1,5 +1,5 @@
 use node_template_runtime::{
-	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SubstrateNFTConfig, SudoConfig,
+	AccountId, AuraConfig, BalancesConfig, GenesisConfig, GrandpaConfig, Signature, SubstrateKittiesConfig, SubstrateNFTConfig, SudoConfig,
 	SystemConfig, WASM_BINARY,
 };
 use sc_service::ChainType;
@@ -152,6 +152,7 @@ fn testnet_genesis(
 			key: Some(root_key),
 		},
 		transaction_payment: Default::default(),
+		substrate_kitties: SubstrateKittiesConfig { kitties: vec![] },
 		substrate_nft: SubstrateNFTConfig { nfts: vec![] },
 	}
 }
