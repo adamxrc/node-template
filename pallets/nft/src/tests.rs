@@ -22,6 +22,12 @@ fn assert_ownership(owner: u64, nft_id: [u8; 16]) {
 	}
 }
 
+fn run_to_block(n: u64) {
+    while System::block_number() < n {
+        System::set_block_number(System::block_number() + 1);
+    }
+}
+
 #[test]
 fn should_build_genesis_nft() {
 	new_test_ext(vec![
@@ -140,7 +146,7 @@ fn withdrawal_nft_should_work() {
 
 		assert_ok!(SubstrateNFT::bid(Origin::signed(2), *b"1234567890123456", 1));
 
-		System::set_block_number(System::block_number() + 200);
+		run_to_block(200);
 
 		assert_ok!(SubstrateNFT::withdrawal(Origin::signed(1), *b"1234567890123456"));
 	});
