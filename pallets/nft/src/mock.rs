@@ -81,7 +81,7 @@ parameter_types! {
 
 impl pallet_nft::Config for Test {
 	type Event = Event;
-	type Currency = Balances;
+	type StakeCurrency = Balances;
 	type NFTRandomness = RandomnessCollectiveFlip;
 	type MaxNFTsOwned = MaxNFTsOwned;
 }
@@ -93,7 +93,7 @@ pub(crate) fn new_test_ext(users: Vec<(u64, [u8; 16])>) -> sp_io::TestExternalit
 	GenesisConfig {
 		//
 		balances: BalancesConfig {
-			balances: users.iter().map(|(user, _)| (*user, 10)).collect(),
+			balances: users.iter().map(|(user, _)| (*user, 20)).collect(),
 		},
 		substrate_nft: SubstrateNFTConfig {
 			nfts: users.iter().map(|(user, nft)| (*user, *nft)).collect(),

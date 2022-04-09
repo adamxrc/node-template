@@ -2,6 +2,7 @@
 
 use crate::{mock::*, pallet::Error, *};
 use frame_support::{assert_noop, assert_ok};
+use frame_support::traits::{OnFinalize, OnInitialize, OffchainWorker};
 
 // This function checks that nft ownership is set correctly in storage.
 // This will panic if things are not correct.
@@ -20,6 +21,16 @@ fn assert_ownership(owner: u64, nft_id: [u8; 16]) {
 			assert!(!owned.contains(&nft_id));
 		}
 	}
+}
+
+/// 模仿区块运行，带有自动结算nft竞拍的处理
+fn run_to_block_finalize(n: u64) {
+    while System::block_number() < n {
+    	if System::block_number() > 1 {
+            SubstrateNFT::on_finalize(System::block_number());
+        }
+        System::set_block_number(System::block_number() + 1);
+    }
 }
 
 fn run_to_block(n: u64) {
@@ -134,6 +145,7 @@ fn bid_nft_fail() {
 	});
 }
 
+// 手动结算nft竞拍的测试
 #[test]
 fn withdrawal_nft_should_work() {
 	new_test_ext(vec![
@@ -144,11 +156,13 @@ fn withdrawal_nft_should_work() {
 		Balances::free_balance(&1);
 		Balances::free_balance(&2);
 
-		assert_ok!(SubstrateNFT::bid(Origin::signed(2), *b"1234567890123456", 1));
+		assert_ok!(SubstrateNFT::bid(Origin::signed(2), *b"1234567890123456", 5));
 
 		run_to_block(200);
 
 		assert_ok!(SubstrateNFT::withdrawal(Origin::signed(1), *b"1234567890123456"));
+
+		assert_eq!(Balances::free_balance(&1), 25);
 	});
 }
 
@@ -166,5 +180,36 @@ fn withdrawal_nft_fail() {
 
 		assert_noop!(SubstrateNFT::withdrawal(Origin::signed(1), *b"1234567890123456"), 
 			Error::<Test>::BidNotClosed);
+	});
+}
+
+/// 自动结算nft竞拍的测试
+#[test]
+fn auto_settle_nft() {
+	new_test_ext(vec![
+		(1, *b"1234567890123456"),
+		(2, *b"123456789012345a"),
+		(3, *b"123456789012345c"),
+	])
+	.execute_with(|| {
+		Balances::free_balance(&1);
+		Balances::free_balance(&2);
+		Balances::free_balance(&3);
+
+		assert_ok!(SubstrateNFT::bid(Origin::signed(2), *b"1234567890123456", 3));
+
+		assert_ok!(SubstrateNFT::bid(Origin::signed(3), *b"1234567890123456", 5));
+
+		assert_ok!(SubstrateNFT::bid(Origin::signed(3), *b"123456789012345a", 6));
+
+		assert_ok!(SubstrateNFT::bid(Origin::signed(1), *b"123456789012345a", 8));
+
+		run_to_block_finalize(200);
+
+		assert_eq!(Balances::free_balance(&1), 17);
+
+		assert_eq!(Balances::free_balance(&2), 28);
+
+		assert_eq!(Balances::free_balance(&3), 15);
 	});
 }

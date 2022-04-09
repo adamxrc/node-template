@@ -296,7 +296,7 @@ parameter_types! {
 /// Configure the pallet-nft in pallets/nft.
 impl pallet_nft::Config for Runtime {
 	type Event = Event;
-	type Currency = Balances;
+	type StakeCurrency = Balances;
 	type NFTRandomness = RandomnessCollectiveFlip;
 	type MaxNFTsOwned = MaxNFTsOwned;
 }
