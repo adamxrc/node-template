@@ -221,21 +221,26 @@ pub mod pallet {
         }
 
         /// Bid a new unique nft.
+        /// 竞拍某个nft
         #[pallet::weight(0)]
         pub fn bid(origin: OriginFor<T>, 
-        		   nft_id: [u8; 16], 
-        		   price: BalanceOf<T>) -> DispatchResult {
+        		   nft_id: [u8; 16], // nft标识符
+        		   price: BalanceOf<T>/* 竞拍代币价格 */) -> DispatchResult {
         	// Make sure the caller is from a signed origin
             let sender = ensure_signed(origin)?;
 
+            // 根据nft标识符获取相应nft对象
             let mut nft = NFTs::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 
+            // nft拥有人不参与竞拍
             ensure!(sender != nft.owner, Error::<T>::SameBidderOwner);
 
+            // nft需要在竞拍有效时间段内
             let current_block_number = <frame_system::Pallet<T>>::block_number();
             ensure!(current_block_number < nft.end, Error::<T>::BidClosed);
 
             if let Some(bid_price) = nft.bid_price {
+                // 竞拍代币价格不能低于之前的竞拍价格
             	ensure!(price > bid_price, Error::<T>::BidPriceTooLow);
 
                 //竞标价格大于之前竞标人的价格
@@ -252,11 +257,13 @@ pub mod pallet {
                 WithdrawReasons::all(),
             );
 
+            // 为nft设置新的竞拍价格和竞拍人
             nft.bid_price = Some(price);
             nft.bidder = Some(sender.clone());
 
             NFTs::<T>::insert(&nft_id, nft);
 
+            // 发送对应的成功竞拍的事件
             Self::deposit_event(Event::Bidded { nft: nft_id, bidder: sender.clone(), bid_price: price });
 
         	Ok(())
@@ -385,15 +392,18 @@ pub mod pallet {
                          block_number: T::BlockNumber,
         ) -> Result<(), DispatchError> {
 
-            // Get the nft
+            // 获取nft对象
             let nft = NFTs::<T>::get(&nft_id).ok_or(Error::<T>::NoNFT)?;
 
             let mut nft_clone = nft.clone();
             
+            // 确保nft没有被结算过
             ensure!(!nft.settle, Error::<T>::NFTSettled);
 
+            // 确保结算人是nft的拥有者
             ensure!(*owner == nft.owner, Error::<T>::WithdrawalNotOwner);
 
+            // 确保结算时nft竞拍已经结束
             ensure!(block_number >= nft.end, Error::<T>::BidNotClosed);
 
             let mut from_owned = NFTsOwned::<T>::get(&owner);
@@ -411,16 +421,18 @@ pub mod pallet {
                     let mut to_owned = NFTsOwned::<T>::get(&to);
                     to_owned.try_push(nft_id).map_err(|()| Error::<T>::TooManyOwned)?;
 
-                    //解锁质押的代币
+                    // 解锁质押的代币
                     T::StakeCurrency::remove_lock(LOCK_ID, &to);
 
-                    //转移代币
+                    // 转移代币
                     T::StakeCurrency::transfer(&to, &owner, bid_price, ExistenceRequirement::KeepAlive)?;
 
+                    // 设置nft的结算标志位
                     nft_clone.settle = true;
 
                     NFTs::<T>::insert(&nft_id, nft_clone);
 
+                    // 发送对应的成功结算的事件
                     Self::deposit_event(Event::Withdrawal { nft: nft_id, from: owner.clone(), to: to.clone() });
                 } else {
                     return Err(Error::<T>::NoBidder.into());
